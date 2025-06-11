@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            overflow-x: hidden;
+            background-color: #000;
+            color: #fff;
+        }
+        
+        h1 {
+            color: #fff;
+            padding: 10px;
+            margin: 0;
+            background-color: #000;
+        }
+        
+        .video-container {
+            width: 100%;
+            height: auto;
+            position: relative;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .controls {
+            margin: 15px;
+            background-color: #000;
+            color: #fff;
+        }
+
+        /* Story Progress Bar */
+        .story-progress {
+            display: flex;
+            width: 100%;
+            height: 2px;
+            position: fixed;
+            top: 4px;
+            left: 0;
+            z-index: 10;
+            padding: 0 2px;
+            background-color: transparent;
+            gap: 2px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            margin: 0 4px;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #ffffff;
+            border-radius: 2px;
+            transition: none;
+        }
+
+        .story-container {
+            position: relative;
+            height: 100vh;
+            height: calc(var(--vh, 1vh) * 100);
+            width: 100vw;
+            overflow: hidden;
+        }
+        
+        .story {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 1;
+            display: none;
+        }
+        
+        .story.active {
+            opacity: 1;
+            z-index: 2;
+            display: block;
+        }
+        
+        /* CTA Button */
+        .cta-button {
+            position: absolute;
+            bottom: 5%; /* Percentage-based positioning */
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 30px;
+            font-size: 16px;
+            z-index: 100;
+            background-color: rgba(222, 68, 16, 0.85);
+            color: rgb(255, 255, 255);
+            font-weight: bold;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            animation: jumpAnimation 1.5s ease-in-out infinite;
+            border: none;
+            outline: none;
+            /* Responsive font size */
+            font-size: clamp(14px, 3vw, 18px);
+            /* Responsive padding */
+            padding: clamp(10px, 2vw, 15px) clamp(20px, 4vw, 35px);
+        }
+
+        @media (max-height: 600px) {
+            .cta-button {
+                bottom: 20px; /* Fixed distance for smaller height screens */
+                padding: 8px 20px;
+                font-size: 14px;
+            }
+        }
+        
+        @media (min-height: 800px) {
+            .cta-button {
+                bottom: 8%; /* More space on taller screens */
+            }
+        }
+
+        /* Final Screen with Heartbeat Effect */
+        .final-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            height: calc(var(--vh, 1vh) * 100);
+            background: linear-gradient(to bottom, 
+                rgba(0, 0, 0, 0.4) 0%, 
+                rgba(0, 0, 0, 0.5) 25%,
+                rgba(0, 0, 0, 0.7) 50%,
+                rgba(0, 0, 0, 0.8) 75%,
+                rgba(0, 0, 0, 0.9) 100%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            z-index: 25;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+            animation: heartbeatBg 1.5s infinite;
+            pointer-events: none;
+        }
+
+        /* Heartbeat animation for background */
+        @keyframes heartbeatBg {
+            0%, 100% {
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+            }
+            50% {
+                backdrop-filter: blur(9px);
+                -webkit-backdrop-filter: blur(9px);
+            }
+            75% {
+                backdrop-filter: blur(9.5px);
+                -webkit-backdrop-filter: blur(9.5px);
+            }
+        }
+
+        .final-screen.active {
+            opacity: 1;
+            z-index: 25;
+            pointer-events: auto;
+        }
+
+        .final-content {
+            max-width: 80%;
+            padding: 0;
+            animation: heartbeatScale 1.5s infinite;
+        }
+
+        /* Heartbeat scale animation for content */
+        @keyframes heartbeatScale {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+            75% {
+                transform: scale(1.01);
+            }
+        }
+
+        .final-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: white;
+            line-height: 1.2;
+            cursor: pointer;
+        }
+
+        .final-description {
+            font-size: 18px;
+            margin-bottom: 40px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+            cursor: pointer;
+        }
+
+        .final-cta-button {
+            background-color: rgba(222, 68, 16, 0.85);
+            color: white;
+            font-weight: bold;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease, background-color 0.3s ease;
+            margin-top: 20px;
+            animation: ctaPulse 2s infinite;
+        }
+
+        @keyframes ctaPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 12px rgba(222, 68, 16, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 8px 20px rgba(222, 68, 16, 0.5);
+            }
+        }
+        
+        @keyframes jumpAnimation {
+            0%, 100% {
+                transform: translateX(-50%) translateY(0);
+            }
+            50% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+                margin: 0;
+                overflow: hidden;
+                height: 100%;
+                width: 100%;
+                position: fixed;
+            }
+            
+            h1 {
+                font-size: 1.2rem;
+                padding: 5px;
+                display: none; /* Hide header on mobile */
+            }
+            
+            .video-container {
+                height: 100%; /* Changed from 100vh to 100% */
+                width: 100%;
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1;
+                background-color: #000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
+            
+            video {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                background-color: #000;
+                position: relative;
+                top: 0;
+                left: 0;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .controls {
+                display: none; /* Hide controls message on mobile */
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                color: white;
+                padding: 10px 0;
+                z-index: 2;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Story View -->
+    <div class="story-progress">
+        <div class="progress-bar">
+            <div class="progress-bar-fill" id="progress1"></div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-bar-fill" id="progress2"></div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-bar-fill" id="progress3"></div>
+        </div>
+    </div>
+
+    <div class="story-container">
+        <div class="story active" id="story1">
+            <div class="video-container">
+                <!-- Video element -->
+                <video id="video1" preload="auto" muted playsinline>
+                    <source src="https://staticvideoshost.online/Blood%20Pressure_1.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <button class="cta-button">Learn More</button>
+            </div>
+        </div>
+        
+        <div class="story" id="story2">
+            <div class="video-container">
+                <!-- Video element -->
+                <video id="video2" preload="auto" muted playsinline>
+                    <source src="https://staticvideoshost.online/Blood%20Pressure_2.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <button class="cta-button">Learn More</button>
+            </div>
+        </div>
+        
+        <div class="story" id="story3">
+            <div class="video-container">
+                <!-- Video element -->
+                <video id="video3" preload="auto" muted playsinline>
+                    <source src="https://staticvideoshost.online/Blood%20Pressure_5.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <button class="cta-button">Learn More</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final Screen with Heartbeat Effect -->
+    <div class="final-screen" id="finalScreen">
+        <div class="final-content">
+            <div class="final-title">
+                Hello, I'm Dr. Marlene Merritt
+            </div>
+            <div class="final-description">
+                Finally, the truth is coming out…
+            </div>
+            <button class="final-cta-button" onclick="window.location.href=destinationURL">
+                Find Solution Now → 
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Fix for iOS viewport height issues
+        function fixViewportHeight() {
+            // First we get the viewport height and multiply it by 1% to get a value for a vh unit
+            let vh = window.innerHeight * 0.01;
+            // Then we set the value in the --vh custom property to the root of the document
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            
+            // Also adjust CTA button positions when viewport changes
+            adjustCTAButtonPositions();
+        }
+
+        // Call the function to set the height initially
+        fixViewportHeight();
+        
+        // Call the function on resize and orientation change
+        window.addEventListener('resize', fixViewportHeight);
+        window.addEventListener('orientationchange', fixViewportHeight);
+
+        // Function to dynamically adjust CTA button positions
+        function adjustCTAButtonPositions() {
+            const videoContainers = document.querySelectorAll('.video-container');
+            const ctaButtons = document.querySelectorAll('.cta-button');
+            
+            videoContainers.forEach((container, index) => {
+                if (ctaButtons[index]) {
+                    // Get the actual visible height of the video
+                    const video = container.querySelector('video');
+                    if (video) {
+                        const videoRect = video.getBoundingClientRect();
+                        const containerRect = container.getBoundingClientRect();
+                        
+                        // Calculate safe zone for button (within the visible video area)
+                        const videoVisibleHeight = videoRect.height;
+                        const bottomPosition = Math.min(
+                            videoVisibleHeight * 0.1, // 10% of video height
+                            30 // but not more than 30px from bottom
+                        );
+                        
+                        // Apply calculated position
+                        ctaButtons[index].style.bottom = `${bottomPosition}px`;
+                    }
+                }
+            });
+        }
+
+        // Initial adjustment
+        window.addEventListener('load', adjustCTAButtonPositions);
+        
+        // Also adjust when video dimensions might change
+        document.querySelectorAll('video').forEach(video => {
+            video.addEventListener('loadedmetadata', adjustCTAButtonPositions);
+            video.addEventListener('play', adjustCTAButtonPositions);
+        });
+
+        // Story functionality
+        const stories = document.querySelectorAll('.story');
+        const videos = document.querySelectorAll('video');
+        const progressBars = [
+            document.getElementById('progress1'),
+            document.getElementById('progress2'),
+            document.getElementById('progress3')
+        ];
+        const finalScreen = document.getElementById('finalScreen');
+        
+        // Destination URL for all redirects
+        const destinationURL = "https://www.mybpfix.com/video_drugs_stk_prod_dr_nhc_mon?affId=roi&c1=w9rlupajqi0kr94a3mujfies&sid=Perform%20Media&utm_medium=cpc&utm_source=roi&utm_campaign=Perform%20Media&utm_content=Perform%20Media&utm_term=Perform%20Media&txid=";
+        
+        let currentStory = 0;
+        let animationFrameIds = Array(videos.length).fill(null);
+        let touchTimeout = null;  // Add the missing variable declaration for hold functionality
+
+        
+        // Initialize - mark all progress bars as empty
+        progressBars.forEach(bar => {
+            bar.style.width = '0%';
+            bar.style.transition = 'width 0.1s linear';
+        });
+        
+        // Start the first video
+        stories[0].classList.add('active');
+        videos[0].play();
+        
+        // Update current progress bar based on video time
+        function updateCurrentProgressBar() {
+            const video = videos[currentStory];
+            const progress = progressBars[currentStory];
+            const percent = (video.currentTime / video.duration) * 100;
+            progress.style.width = `${percent}%`;
+        }
+        
+        // Show the final screen
+        function showFinalScreen() {
+            // Make sure the story remains visible
+            stories[currentStory].classList.add('active');
+            
+            // Keep the current video playing but muted in the background
+            videos[currentStory].muted = true;
+            
+            // Show the final screen
+            finalScreen.classList.add('active');
+        }
+        
+        // Go to the next story
+        function goToNextStory() {
+            // Mark current progress bar as complete
+            progressBars[currentStory].style.width = '100%';
+            
+            // Hide current story only if not showing final screen
+            if (!finalScreen.classList.contains('active')) {
+                stories[currentStory].classList.remove('active');
+                videos[currentStory].pause();
+            }
+            
+            // Move to next story
+            currentStory++;
+            
+            // If we've seen all stories, show final screen instead of resetting
+            if (currentStory >= stories.length) {
+                currentStory = stories.length - 1; // Stay on the last story for background
+                showFinalScreen();
+                return;
+            }
+            
+            // Show new current story
+            stories[currentStory].classList.add('active');
+            videos[currentStory].currentTime = 0;
+            videos[currentStory].play();
+        }
+        
+        // Go to the previous story
+        function goToPreviousStory() {
+            if (currentStory <= 0) return;
+
+            // If final screen is showing, hide it and go back to the last video
+            if (finalScreen.classList.contains('active')) {
+                finalScreen.classList.remove('active');
+                videos[currentStory].muted = false; // Unmute the video
+                videos[currentStory].play();
+                return;
+            }
+
+            // Pause and hide current video/story
+            stories[currentStory].classList.remove('active');
+            videos[currentStory].pause();
+
+            // Instantly reset progress bar width without animation
+            const bar = progressBars[currentStory];
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+
+            // Force a reflow to flush the style changes
+            bar.offsetHeight; // This triggers reflow
+
+            // Restore smooth transition
+            bar.style.transition = 'none';
+
+            // Go to previous story
+            currentStory--;
+            stories[currentStory].classList.add('active');
+            videos[currentStory].currentTime = 0;
+            videos[currentStory].play();
+        }
+
+        
+        // Reset all stories to start from beginning
+        function resetAllStories() {
+            // Hide the final screen if it's showing
+            finalScreen.classList.remove('active');
+            
+            // Reset counter
+            currentStory = 0;
+
+            // Pause all videos and hide all stories
+            videos.forEach(video => {
+                video.pause();
+                video.currentTime = 0;
+            });
+            stories.forEach(story => story.classList.remove('active'));
+
+            // Reset all progress bars instantly with no animation
+            progressBars.forEach(bar => {
+                bar.style.transition = 'none';     // Disable transition
+                bar.style.width = '0%';            // Instantly reset width
+                bar.offsetHeight;                  // Force reflow to flush the change
+                bar.style.transition = '';  // Re-enable transition
+            });
+
+            // Activate first story
+            stories[0].classList.add('active');
+            videos[0].play();  // This will trigger the animateProgressBar() via 'play' event
+        }
+
+
+        function animateProgressBar(video, progressBar, index) {
+            function step() {
+                if (index !== currentStory) return; // Stop if user navigated away
+
+                const percent = (video.currentTime / video.duration) * 100;
+                progressBar.style.width = `${percent}%`;
+                requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        videos.forEach((video, index) => {
+            video.addEventListener('play', () => {
+                animateProgressBar(video, progressBars[index], index);
+            });
+
+            video.addEventListener('ended', () => {
+                goToNextStory();
+            });
+        });
+
+        // Add specific event listener for the last video to show final screen before it ends
+        videos[2].addEventListener('timeupdate', function() {
+            // If we're on the last video and it's near the end (90% complete)
+            if (currentStory === 2 && !finalScreen.classList.contains('active')) {
+                if (this.currentTime >= this.duration * 0.9) {
+                    showFinalScreen();
+                }
+            }
+        });
+
+        // Touch/click navigation
+        document.addEventListener('click', (e) => {
+            // Skip if the click was on any CTA button
+            if (e.target.classList.contains('cta-button') || 
+                e.target.classList.contains('final-cta-button')) {
+                e.stopPropagation();
+                window.location.href = destinationURL;
+                return;
+            }
+            
+            // If final screen is showing, clicking anywhere should redirect to destination URL
+            // EXCEPT on the title or description text
+            if (finalScreen.classList.contains('active')) {
+                // Don't redirect if clicking on title or description text
+                if (e.target.classList.contains('final-title') || 
+                    e.target.classList.contains('final-description')) {
+                    return;
+                }
+                window.location.href = destinationURL;
+                return;
+            }
+            
+            // During videos, allow only navigation between stories
+            const width = window.innerWidth;
+            const clickX = e.clientX;
+            
+            // Right side: next story
+            if (clickX > width * 0.5) {
+                goToNextStory();
+            } 
+            // Left side: previous story
+            else {
+                goToPreviousStory();
+            }
+        });
+        
+        // Add swipe functionality
+        let touchstartX = 0;
+        let touchendX = 0;
+        let touchstartY = 0;
+        let touchendY = 0;
+        
+        function handleSwipe() {
+            const horizontalSwipeThreshold = 50; // minimum distance for horizontal swipe
+            const verticalSwipeThreshold = 50;   // minimum distance for vertical swipe
+            
+            // Calculate horizontal and vertical distance
+            const horizontalDistance = touchendX - touchstartX;
+            const verticalDistance = touchendY - touchstartY;
+            
+            // Swipe up should always go to destination URL (on any video or final screen)
+            if (verticalDistance < -verticalSwipeThreshold) {
+                window.location.href = destinationURL;
+                return;
+            }
+            
+            // If final screen is showing, allow additional actions
+            if (finalScreen.classList.contains('active')) {
+                // Swipe left to go to URL on final screen
+                if (horizontalDistance < -horizontalSwipeThreshold) {
+                    window.location.href = destinationURL;
+                    return;
+                }
+                
+                // No other actions (swipe right or down) on final screen
+                return;
+            }
+            
+            // During videos, only handle swipe right for navigation
+            // Only allow swipe right to go to previous story
+            if (horizontalDistance > horizontalSwipeThreshold) {
+                goToPreviousStory();
+            }
+            
+            // No other swipe actions during videos
+        }
+        
+        // Pause video on touch/mouse hold
+        function pauseVideoOnHold() {
+            // Clear any existing timeout to prevent multiple pauses
+            if (touchTimeout) clearTimeout(touchTimeout);
+            
+            // Set a small timeout to differentiate between tap and hold
+            touchTimeout = setTimeout(() => {
+                const currentVideo = videos[currentStory];
+                if (!currentVideo.paused) {
+                    currentVideo.pause();
+                }
+            }, 200); // 200ms delay to detect a hold
+        }
+        
+        // Resume video on release if it was paused
+        function resumeVideoOnRelease() {
+            // Clear the timeout in case the hold was too short
+            if (touchTimeout) {
+                clearTimeout(touchTimeout);
+                touchTimeout = null;
+            }
+            
+            const currentVideo = videos[currentStory];
+            // Force play regardless of paused state to ensure playback continues
+            try {
+                currentVideo.play().catch(error => {
+                    console.log("Error resuming video:", error);
+                });
+            } catch (error) {
+                console.log("Error trying to play video:", error);
+            }
+        }
+        
+        document.addEventListener('touchstart', e => {
+            // Skip if touch is on CTA button
+            if (e.target.classList.contains('cta-button') || 
+                e.target.classList.contains('final-cta-button')) {
+                return;
+            }
+            
+            // Skip touch tracking on final screen text elements
+            if (e.target.classList.contains('final-title') || 
+                e.target.classList.contains('final-description')) {
+                return;
+            }
+            
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+            pauseVideoOnHold();
+        });
+        
+        document.addEventListener('touchend', e => {
+            // Skip if touch is on CTA button
+            if (e.target.classList.contains('cta-button') || 
+                e.target.classList.contains('final-cta-button')) {
+                return;
+            }
+            
+            // Skip touch tracking on final screen text elements
+            if (e.target.classList.contains('final-title') || 
+                e.target.classList.contains('final-description')) {
+                return;
+            }
+            
+            touchendX = e.changedTouches[0].screenX;
+            touchendY = e.changedTouches[0].screenY;
+            resumeVideoOnRelease();
+            handleSwipe();
+        });
+        
+        // Also add mouse events for desktop
+        document.addEventListener('mousedown', e => {
+            // Skip if the click was on the CTA button
+            if (e.target.classList.contains('cta-button')) return;
+            pauseVideoOnHold();
+        });
+        
+        document.addEventListener('mouseup', e => {
+            // Skip if the click was on the CTA button
+            if (e.target.classList.contains('cta-button')) return;
+            resumeVideoOnRelease();
+        });
+
+    </script>
+</body>
+</html> 
